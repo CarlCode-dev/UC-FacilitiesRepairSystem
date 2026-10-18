@@ -1,0 +1,411 @@
+{% extends "base.html" %}
+
+{% block title %}Facilities Admin Dispatch | UC Main Facilities{% endblock %}
+
+{% block content %}
+<div class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <img src="{{ url_for('static', filename='images/uc-logo.png') }}" 
+                     alt="UC Logo" 
+                     class="w-14 h-14 object-contain drop-shadow"
+                     onerror="this.onerror=null; this.src='/uc-logo.png';">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-ucblue-100 text-ucblue-900 uppercase tracking-wider">
+                            Management Hub
+                        </span>
+                        <span class="text-xs text-slate-400">• FixFlowDB Active</span>
+                    </div>
+                    <h1 class="text-2xl font-black text-slate-900 tracking-tight mt-1">Facilities Dispatch & Work Order Administration</h1>
+                    <p class="text-xs text-slate-500">Monitor campus repair tickets, delegate technicians, and oversee maintenance operations.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="window.location.reload()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-3.5 py-2 rounded-xl transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-arrows-rotate"></i> Refresh Data
+                </button>
+                <a href="{{ url_for('index') }}#submit-form" class="bg-ucblue-900 hover:bg-ucblue-800 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-plus text-ucgold-400"></i> New Ticket
+                </a>
+            </div>
+        </div>
+
+        <!-- 4 KPI Stats Grid -->
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+            <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-ucblue-100 text-ucblue-900 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-clipboard-list"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-slate-900">{{ requests|length }}</div>
+                    <div class="text-xs font-medium text-slate-500">Total Requests</div>
+                </div>
+            </div>
+
+            <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-4 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-hourglass-half"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-amber-900">{{ pending_count }}</div>
+                    <div class="text-xs font-bold text-amber-700">Pending Review</div>
+                </div>
+            </div>
+
+            <div class="bg-purple-50/60 border border-purple-200 rounded-2xl p-4 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-person-digging"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-purple-900">{{ in_progress_count }}</div>
+                    <div class="text-xs font-bold text-purple-700">In Progress</div>
+                </div>
+            </div>
+
+            <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-emerald-900">{{ completed_count }}</div>
+                    <div class="text-xs font-bold text-emerald-700">Resolved / Done</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Table Section -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        
+        <!-- Filter Toolbar -->
+        <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col md:flex-row items-center justify-between gap-4">
+            <!-- Search -->
+            <div class="relative w-full md:w-80">
+                <i class="fa-solid fa-search absolute left-3.5 top-3 text-slate-400 text-xs"></i>
+                <input type="text" id="admin-search-input" onkeyup="filterAdminTable()" placeholder="Search room, ID, issue label..." 
+                       class="w-full pl-9 pr-4 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-ucblue-600 outline-none">
+            </div>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+                <select id="filter-status" onchange="filterAdminTable()" class="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white outline-none">
+                    <option value="">All Statuses</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Assigned">Assigned</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                </select>
+
+                <select id="filter-priority" onchange="filterAdminTable()" class="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white outline-none">
+                    <option value="">All Priorities</option>
+                    <option value="Urgent">Urgent</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+
+                <select id="filter-category" onchange="filterAdminTable()" class="text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white outline-none">
+                    <option value="">All Categories</option>
+                    {% for cat in categories %}
+                    <option value="{{ cat.category_name }}">{{ cat.category_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse" id="requests-table">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                        <th class="py-3 px-4">Ticket</th>
+                        <th class="py-3 px-4">Location</th>
+                        <th class="py-3 px-4">Issue Summary</th>
+                        <th class="py-3 px-4">Category</th>
+                        <th class="py-3 px-4">Priority</th>
+                        <th class="py-3 px-4">Status</th>
+                        <th class="py-3 px-4">Assigned Staff</th>
+                        <th class="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-xs">
+                    {% for req in requests %}
+                    <tr class="hover:bg-blue-50/40 transition-colors req-row" 
+                        data-status="{{ req.status_name }}" 
+                        data-priority="{{ req.priority }}" 
+                        data-category="{{ req.category_name }}"
+                        data-search="{{ req.request_id }} {{ req.room }} {{ req.building }} {{ req.description_label }} {{ req.first_name }} {{ req.last_name }}">
+                        
+                        <!-- Ticket & Date -->
+                        <td class="py-3.5 px-4">
+                            <span class="font-extrabold text-ucblue-900 bg-ucblue-50 border border-ucblue-200 px-2 py-0.5 rounded text-[11px]">
+                                REQ-{{ req.request_id }}
+                            </span>
+                            <div class="text-[10px] text-slate-400 mt-1 flex items-center gap-1">
+                                <i class="fa-regular fa-calendar"></i> {{ req.request_date }}
+                            </div>
+                        </td>
+
+                        <!-- Location -->
+                        <td class="py-3.5 px-4">
+                            <div class="font-bold text-slate-800">{{ req.room }}</div>
+                            <div class="text-[11px] text-slate-500">{{ req.building }} • {{ req.floor_name }}</div>
+                        </td>
+
+                        <!-- Issue Summary -->
+                        <td class="py-3.5 px-4 max-w-xs">
+                            <div class="font-bold text-slate-800 truncate" title="{{ req.description_label }}">{{ req.description_label }}</div>
+                            <div class="text-[11px] text-slate-500 truncate" title="{{ req.description }}">{{ req.description }}</div>
+                            <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                <span class="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
+                                    Reported by: {{ req.first_name }} {{ req.last_name }} ({{ req.school_id_no }})
+                                </span>
+                                {% if req.image_url %}
+                                <a href="{{ req.image_url }}" target="_blank" 
+                                   class="inline-flex items-center gap-1 text-[10px] font-bold text-ucblue-800 bg-blue-50 border border-blue-200 hover:bg-blue-100 px-2 py-0.5 rounded transition-all">
+                                    <i class="fa-solid fa-camera text-ucblue-600"></i> View Photo
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+
+                        <!-- Category -->
+                        <td class="py-3.5 px-4">
+                            <span class="inline-flex items-center gap-1 font-semibold text-slate-700 bg-slate-100 px-2 py-1 rounded-md text-[11px]">
+                                {{ req.category_name }}
+                            </span>
+                        </td>
+
+                        <!-- Priority -->
+                        <td class="py-3.5 px-4">
+                            {% if req.priority == 'Urgent' %}
+                            <span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 w-fit">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Urgent
+                            </span>
+                            {% elif req.priority == 'High' %}
+                            <span class="px-2 py-0.5 rounded-full font-bold text-[10px] bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 w-fit">
+                                <i class="fa-solid fa-circle-exclamation"></i> High
+                            </span>
+                            {% elif req.priority == 'Medium' %}
+                            <span class="px-2 py-0.5 rounded-full font-semibold text-[10px] bg-blue-100 text-blue-800 border border-blue-200 flex items-center gap-1 w-fit">
+                                Medium
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full font-medium text-[10px] bg-slate-100 text-slate-700 border border-slate-200 flex items-center gap-1 w-fit">
+                                Low
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Status -->
+                        <td class="py-3.5 px-4">
+                            {% if req.status_name == 'Pending' %}
+                            <span class="px-2.5 py-1 rounded-full font-bold text-[11px] bg-amber-100 text-amber-900 border border-amber-300 inline-flex items-center gap-1">
+                                <i class="fa-solid fa-clock text-[9px]"></i> Pending
+                            </span>
+                            {% elif req.status_name == 'Assigned' %}
+                            <span class="px-2.5 py-1 rounded-full font-bold text-[11px] bg-blue-100 text-ucblue-900 border border-blue-300 inline-flex items-center gap-1">
+                                <i class="fa-solid fa-user-check text-[9px]"></i> Assigned
+                            </span>
+                            {% elif req.status_name == 'In Progress' %}
+                            <span class="px-2.5 py-1 rounded-full font-bold text-[11px] bg-purple-100 text-purple-900 border border-purple-300 inline-flex items-center gap-1">
+                                <i class="fa-solid fa-spinner fa-spin text-[9px]"></i> In Progress
+                            </span>
+                            {% elif req.status_name == 'Completed' %}
+                            <span class="px-2.5 py-1 rounded-full font-bold text-[11px] bg-emerald-100 text-emerald-900 border border-emerald-300 inline-flex items-center gap-1">
+                                <i class="fa-solid fa-check text-[9px]"></i> Completed
+                            </span>
+                            {% else %}
+                            <span class="px-2.5 py-1 rounded-full font-bold text-[11px] bg-slate-100 text-slate-700">
+                                {{ req.status_name }}
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Assigned Staff -->
+                        <td class="py-3.5 px-4">
+                            {% if req.staff_name %}
+                            <div class="font-bold text-slate-800 flex items-center gap-1.5">
+                                <div class="w-6 h-6 rounded-full bg-ucblue-900 text-white flex items-center justify-center text-[10px]">
+                                    <i class="fa-solid fa-user"></i>
+                                </div>
+                                <span>{{ req.staff_name }}</span>
+                            </div>
+                            <div class="text-[10px] text-slate-400 mt-0.5">Assigned: {{ req.date_assigned }}</div>
+                            {% else %}
+                            <span class="text-slate-400 italic font-medium">Unassigned</span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Actions -->
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="flex items-center justify-end gap-1.5">
+                                <button onclick="openAssignModal('{{ req.request_id }}', '{{ req.description_label }}', '{{ req.room }}', '{{ req.staff_id|default('') }}')" 
+                                        class="bg-ucblue-900 hover:bg-ucblue-800 text-white font-bold text-[11px] px-3 py-1.5 rounded-lg shadow-sm transition-all flex items-center gap-1.5">
+                                    <i class="fa-solid fa-user-plus text-[10px]"></i>
+                                    <span>{% if req.staff_name %}Reassign{% else %}Assign Staff{% endif %}</span>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="no-results" class="hidden p-12 text-center text-slate-500">
+            <i class="fa-solid fa-folder-open text-3xl text-slate-300 mb-2"></i>
+            <p class="text-sm font-semibold">No repair requests found matching current filter.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Assign Technician -->
+<div id="assign-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all scale-95 opacity-0 duration-200" id="assign-modal-card">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-ucblue-100 text-ucblue-900 flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-user-gear"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Assign Maintenance Staff</h3>
+                    <p class="text-[11px] text-slate-500" id="modal-req-subtitle">REQ-101 • Room 205</p>
+                </div>
+            </div>
+            <button onclick="closeAssignModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="assign-form" onsubmit="handleAssignSubmit(event)" class="space-y-4 mt-4">
+            <input type="hidden" id="assign-request-id" name="request_id">
+            
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Select Technician (Physical Plant Staff) <span class="text-rose-500">*</span></label>
+                <select id="staff-select" name="staff_id" required class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-ucblue-600 outline-none bg-white font-medium">
+                    <option value="" disabled selected>Choose maintenance staff...</option>
+                    {% for staff in staff_users %}
+                    <option value="{{ staff.user_id }}">{{ staff.first_name }} {{ staff.last_name }} ({{ staff.school_id_no }}) — {{ staff.department_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Dispatch Remarks / Instructions</label>
+                <textarea id="assign-remarks" name="remarks" rows="3" placeholder="e.g. Inspect breaker panel first; coordinate with room custodian..."
+                          class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-ucblue-600 outline-none"></textarea>
+            </div>
+
+            <div class="pt-3 border-t border-slate-200 flex justify-end gap-2">
+                <button type="button" onclick="closeAssignModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                    Cancel
+                </button>
+                <button type="submit" id="assign-submit-btn" class="bg-ucblue-900 hover:bg-ucblue-800 text-white font-bold text-xs px-5 py-2 rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Confirm Assignment</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function filterAdminTable() {
+        const query = document.getElementById('admin-search-input').value.toLowerCase();
+        const status = document.getElementById('filter-status').value;
+        const priority = document.getElementById('filter-priority').value;
+        const category = document.getElementById('filter-category').value;
+
+        const rows = document.querySelectorAll('.req-row');
+        let visibleCount = 0;
+
+        rows.forEach(row => {
+            const rowStatus = row.getAttribute('data-status');
+            const rowPriority = row.getAttribute('data-priority');
+            const rowCategory = row.getAttribute('data-category');
+            const searchData = row.getAttribute('data-search').toLowerCase();
+
+            const matchSearch = !query || searchData.includes(query);
+            const matchStatus = !status || rowStatus === status;
+            const matchPriority = !priority || rowPriority === priority;
+            const matchCategory = !category || rowCategory === category;
+
+            if (matchSearch && matchStatus && matchPriority && matchCategory) {
+                row.style.display = '';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        document.getElementById('no-results').classList.toggle('hidden', visibleCount > 0);
+    }
+
+    function openAssignModal(reqId, label, room, currentStaffId) {
+        document.getElementById('assign-request-id').value = reqId;
+        document.getElementById('modal-req-subtitle').innerText = `REQ-${reqId} • ${room} (${label})`;
+        if (currentStaffId) {
+            document.getElementById('staff-select').value = currentStaffId;
+        } else {
+            document.getElementById('staff-select').value = "";
+        }
+        
+        const modal = document.getElementById('assign-modal');
+        const card = document.getElementById('assign-modal-card');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            card.classList.remove('scale-95', 'opacity-0');
+        }, 10);
+    }
+
+    function closeAssignModal() {
+        const modal = document.getElementById('assign-modal');
+        const card = document.getElementById('assign-modal-card');
+        card.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    async function handleAssignSubmit(e) {
+        e.preventDefault();
+        const form = document.getElementById('assign-form');
+        const btn = document.getElementById('assign-submit-btn');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+
+        const payload = {
+            request_id: document.getElementById('assign-request-id').value,
+            staff_id: document.getElementById('staff-select').value,
+            remarks: document.getElementById('assign-remarks').value
+        };
+
+        try {
+            const res = await fetch('/api/assign', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`Technician assigned to REQ-${payload.request_id}!`, 'success');
+                closeAssignModal();
+                setTimeout(() => window.location.reload(), 800);
+            } else {
+                showToast(data.message || 'Failed to assign staff', 'error');
+            }
+        } catch (err) {
+            showToast('Server error while assigning staff', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-check"></i> Confirm Assignment`;
+        }
+    }
+</script>
+{% endblock %}

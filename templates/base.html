@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Repair Request and Tracking System | UC Main Facilities{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ucblue: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#003882', // UC Royal Blue
+                            950: '#09234b'
+                        },
+                        ucgold: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        .uc-gradient {
+            background: linear-gradient(135deg, #003882 0%, #1e40af 60%, #0284c7 100%);
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col selection:bg-ucblue-800 selection:text-white">
+
+    <!-- Top UC Notice Bar -->
+    <div class="bg-ucblue-950 text-blue-200 text-xs py-1.5 px-4 border-b border-ucblue-900/50">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-1">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-ucgold-500 text-ucblue-950 uppercase tracking-wider">UC Main</span>
+                <span>University of Cebu - Main Campus • Physical Plant and Facilities Office</span>
+            </div>
+            <div class="flex items-center gap-4 text-slate-300">
+                <span><i class="fa-solid fa-phone text-xs mr-1 text-ucgold-400"></i> Local 114 / 118</span>
+                <span><i class="fa-solid fa-clock text-xs mr-1 text-ucgold-400"></i> Mon-Sat: 7:00 AM - 7:00 PM</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Navigation Bar -->
+    <nav class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <!-- Brand / Logo -->
+                <div class="flex items-center gap-3">
+                    <a href="{{ url_for('index') }}" class="flex items-center gap-3 group">
+                        <img src="{{ url_for('static', filename='images/uc-logo.png') }}" 
+                             alt="University of Cebu Logo" 
+                             class="w-11 h-11 object-contain drop-shadow-sm group-hover:scale-105 transition-transform"
+                             onerror="this.onerror=null; this.src='/uc-logo.png';">
+                        <div>
+                            <div class="flex items-center gap-1.5">
+                                <span class="text-lg font-black tracking-tight text-ucblue-900">FixFlow</span>
+                                <span class="text-xs font-bold px-1.5 py-0.5 rounded bg-blue-100 text-ucblue-800">UC Main</span>
+                            </div>
+                            <p class="text-[11px] font-medium text-slate-500 leading-none">Repair Request & Tracking System</p>
+                        </div>
+                    </a>
+                </div>
+
+                <!-- Navigation Tabs -->
+                <div class="hidden md:flex items-center space-x-1 lg:space-x-2">
+                    <a href="{{ url_for('index') }}" 
+                       class="px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 {% if active_page == 'portal' %}bg-ucblue-50 text-ucblue-900 border border-blue-200{% else %}text-slate-600 hover:text-ucblue-900 hover:bg-slate-100{% endif %}">
+                        <i class="fa-solid fa-file-circle-plus text-ucblue-700"></i>
+                        <span>Submit & Track</span>
+                    </a>
+
+                    <a href="{{ url_for('admin_dashboard') }}" 
+                       class="px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 {% if active_page == 'admin' %}bg-ucblue-50 text-ucblue-900 border border-blue-200{% else %}text-slate-600 hover:text-ucblue-900 hover:bg-slate-100{% endif %}">
+                        <i class="fa-solid fa-shield-halved text-ucblue-700"></i>
+                        <span>Admin Dispatch</span>
+                    </a>
+
+                    <a href="{{ url_for('staff_dashboard') }}" 
+                       class="px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 {% if active_page == 'staff' %}bg-ucblue-50 text-ucblue-900 border border-blue-200{% else %}text-slate-600 hover:text-ucblue-900 hover:bg-slate-100{% endif %}">
+                        <i class="fa-solid fa-helmet-safety text-ucblue-700"></i>
+                        <span>Staff Work Orders</span>
+                    </a>
+                </div>
+
+                <!-- Action Button -->
+                <div class="flex items-center gap-2">
+                    <a href="{{ url_for('index') }}#submit-form" 
+                       class="inline-flex items-center gap-2 bg-ucblue-900 hover:bg-ucblue-800 text-white text-xs sm:text-sm font-bold px-4 py-2 rounded-lg shadow-sm hover:shadow transition-all">
+                        <i class="fa-solid fa-plus text-ucgold-400"></i>
+                        <span class="hidden sm:inline">New Repair</span> Request
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Main Content Block -->
+    <main class="flex-grow">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 mt-16 py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center sm:text-left flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <img src="{{ url_for('static', filename='images/uc-logo.png') }}" 
+                     alt="UC Logo" 
+                     class="w-10 h-10 object-contain drop-shadow-sm"
+                     onerror="this.onerror=null; this.src='/uc-logo.png';">
+                <div>
+                    <p class="text-sm font-bold text-ucblue-900">Repair Request and Tracking System for UC Main Facilities</p>
+                    <p class="text-xs text-slate-500 mt-0.5">Database Management System • FixFlowDB on SSMS 22</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-4 text-xs font-medium text-slate-500">
+                <span class="inline-flex items-center gap-1.5"><i class="fa-solid fa-circle text-emerald-500 text-[8px]"></i> System Online</span>
+                <span class="text-slate-300">|</span>
+                <span>University of Cebu Main Campus</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Global Scripts -->
+    <script>
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const bgClass = type === 'success' ? 'bg-emerald-600' : (type === 'error' ? 'bg-rose-600' : 'bg-ucblue-900');
+            const iconClass = type === 'success' ? 'fa-circle-check' : (type === 'error' ? 'fa-triangle-exclamation' : 'fa-circle-info');
+            
+            toast.className = `${bgClass} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 text-sm font-semibold transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+            toast.innerHTML = `<i class="fa-solid ${iconClass} text-base"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            }, 10);
+            
+            setTimeout(() => {
+                toast.classList.add('opacity-0', '-translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

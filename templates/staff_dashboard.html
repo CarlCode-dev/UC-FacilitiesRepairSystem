@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Technician Work Orders | UC Main Facilities{% endblock %}
+
+{% block content %}
+<div class="bg-white border-b border-slate-200">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+                <img src="{{ url_for('static', filename='images/uc-logo.png') }}" 
+                     alt="UC Logo" 
+                     class="w-14 h-14 object-contain drop-shadow"
+                     onerror="this.onerror=null; this.src='/uc-logo.png';">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-ucblue-100 text-ucblue-900 uppercase tracking-wider">
+                            Field Operations
+                        </span>
+                        <span class="text-xs text-slate-400">• Maintenance Staff View</span>
+                    </div>
+                    <h1 class="text-2xl font-black text-slate-900 tracking-tight mt-1">Technician Work Orders & Job Tracking</h1>
+                    <p class="text-xs text-slate-500">Manage your assigned campus repair orders, mark jobs in progress, and report completion status.</p>
+                </div>
+            </div>
+            
+            <!-- Staff Selector Simulator (Allows switching active technician for demonstration) -->
+            <div class="flex items-center gap-2 bg-slate-50 p-2 rounded-xl border border-slate-200">
+                <span class="text-xs font-bold text-slate-500 pl-1"><i class="fa-solid fa-user-circle text-ucblue-700"></i> Active Tech:</span>
+                <select id="staff-switcher" onchange="switchTechnician(this.value)" class="text-xs font-bold text-ucblue-900 bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none">
+                    {% for st in staff_users %}
+                    <option value="{{ st.user_id }}" {% if current_staff_id == st.user_id %}selected{% endif %}>
+                        {{ st.first_name }} {{ st.last_name }} ({{ st.department_name }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+            <div class="bg-blue-50/60 border border-blue-200 rounded-2xl p-4 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-ucblue-100 text-ucblue-900 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-clipboard-check"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-slate-900">{{ assigned_jobs|length }}</div>
+                    <div class="text-xs font-bold text-ucblue-900">Total Work Orders</div>
+                </div>
+            </div>
+
+            <div class="bg-purple-50/60 border border-purple-200 rounded-2xl p-4 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-purple-100 text-purple-800 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-wrench"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-purple-900" id="tech-active-count">
+                        {{ assigned_jobs | selectattr('status_name', 'equalto', 'In Progress') | list | length }}
+                    </div>
+                    <div class="text-xs font-bold text-purple-800">Currently In Progress</div>
+                </div>
+            </div>
+
+            <div class="bg-emerald-50/60 border border-emerald-200 rounded-2xl p-4 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center text-xl font-bold">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div>
+                    <div class="text-2xl font-black text-emerald-900" id="tech-completed-count">
+                        {{ assigned_jobs | selectattr('status_name', 'equalto', 'Completed') | list | length }}
+                    </div>
+                    <div class="text-xs font-bold text-emerald-800">Completed Repairs</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Work Orders List -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div class="space-y-4">
+        {% if assigned_jobs|length == 0 %}
+        <div class="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+            <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center text-2xl mx-auto mb-3">
+                <i class="fa-solid fa-clipboard-check"></i>
+            </div>
+            <h3 class="text-base font-bold text-slate-800">No Work Orders Assigned</h3>
+            <p class="text-xs text-slate-500 mt-1">This technician currently has no assigned repair requests.</p>
+        </div>
+        {% endif %}
+
+        {% for job in assigned_jobs %}
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <span class="font-black text-ucblue-900 bg-blue-50 border border-blue-200 px-3 py-1 rounded-lg text-xs">
+                        REQ-{{ job.request_id }}
+                    </span>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">{{ job.description_label }}</h3>
+                        <p class="text-xs text-slate-500">
+                            <i class="fa-solid fa-location-dot text-rose-500 mr-1"></i>
+                            <strong>{{ job.room }}</strong> — {{ job.building }} ({{ job.floor_name }})
+                        </p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <!-- Priority -->
+                    {% if job.priority == 'Urgent' %}
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Urgent
+                    </span>
+                    {% elif job.priority == 'High' %}
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                        High Priority
+                    </span>
+                    {% else %}
+                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                        {{ job.priority }} Priority
+                    </span>
+                    {% endif %}
+
+                    <!-- Status -->
+                    {% if job.status_name == 'Assigned' %}
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-ucblue-900 border border-blue-200">
+                        Assigned
+                    </span>
+                    {% elif job.status_name == 'In Progress' %}
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-900 border border-purple-200 flex items-center gap-1">
+                        <i class="fa-solid fa-spinner fa-spin text-[10px]"></i> In Progress
+                    </span>
+                    {% elif job.status_name == 'Completed' %}
+                    <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-900 border border-emerald-200 flex items-center gap-1">
+                        <i class="fa-solid fa-check text-[10px]"></i> Completed
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Body Details -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 py-4 text-xs">
+                <div>
+                    <span class="text-slate-400 font-semibold block">Issue Description:</span>
+                    <p class="text-slate-700 mt-0.5 leading-relaxed">{{ job.description }}</p>
+                    {% if job.image_url %}
+                    <div class="mt-2.5 flex items-center gap-2.5 p-2 bg-slate-50 border border-slate-200 rounded-xl">
+                        <a href="{{ job.image_url }}" target="_blank" class="group relative block w-14 h-14 rounded-lg overflow-hidden border border-slate-200 shadow-sm flex-shrink-0">
+                            <img src="{{ job.image_url }}" alt="Damage proof" class="w-full h-full object-cover group-hover:scale-110 transition-transform">
+                        </a>
+                        <div>
+                            <span class="text-[11px] font-bold text-slate-800 block flex items-center gap-1">
+                                <i class="fa-solid fa-camera text-ucblue-700"></i> Photo Proof
+                            </span>
+                            <a href="{{ job.image_url }}" target="_blank" class="text-[10px] text-ucblue-700 font-bold hover:underline inline-flex items-center gap-1 mt-0.5">
+                                <i class="fa-solid fa-up-right-from-square text-[9px]"></i> View Picture
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div>
+                    <span class="text-slate-400 font-semibold block">Assignment Timeline:</span>
+                    <div class="text-slate-600 space-y-1 mt-0.5">
+                        <p><i class="fa-regular fa-calendar-plus text-slate-400 mr-1"></i> Assigned: {{ job.date_assigned }}</p>
+                        <p><i class="fa-solid fa-play text-slate-400 mr-1"></i> Started: {{ job.date_started or 'Not started yet' }}</p>
+                        <p><i class="fa-solid fa-circle-check text-slate-400 mr-1"></i> Finished: {{ job.date_completed or 'Incomplete' }}</p>
+                    </div>
+                </div>
+                <div>
+                    <span class="text-slate-400 font-semibold block">Dispatcher Instructions & Remarks:</span>
+                    <p class="text-slate-700 italic mt-0.5">{{ job.remarks or 'No special instructions.' }}</p>
+                </div>
+            </div>
+
+            <!-- Technician Action Bar -->
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <span class="text-[11px] text-slate-400">Category: <strong class="text-slate-600">{{ job.category_name }}</strong></span>
+                
+                <div class="flex items-center gap-2">
+                    {% if job.status_name == 'Assigned' %}
+                    <button onclick="updateJobProgress('{{ job.assignment_id }}', '{{ job.request_id }}', 'start')" 
+                            class="bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5 active:scale-95">
+                        <i class="fa-solid fa-play text-[10px]"></i>
+                        <span>Start Repair Work</span>
+                    </button>
+                    {% endif %}
+
+                    {% if job.status_name == 'In Progress' or job.status_name == 'Assigned' %}
+                    <button onclick="openCompleteModal('{{ job.assignment_id }}', '{{ job.request_id }}', '{{ job.description_label }}')" 
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-4 py-2 rounded-xl shadow-sm transition-all flex items-center gap-1.5 active:scale-95">
+                        <i class="fa-solid fa-check-double text-[10px]"></i>
+                        <span>Mark as Completed</span>
+                    </button>
+                    {% endif %}
+
+                    {% if job.status_name == 'Completed' %}
+                    <span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-check"></i> Work Order Resolved
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal: Mark as Completed -->
+<div id="complete-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-100 transform transition-all scale-95 opacity-0 duration-200" id="complete-modal-card">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Complete Repair Work Order</h3>
+                    <p class="text-[11px] text-slate-500" id="complete-subtitle">REQ-101</p>
+                </div>
+            </div>
+            <button onclick="closeCompleteModal()" class="text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="complete-form" onsubmit="handleCompleteSubmit(event)" class="space-y-4 mt-4">
+            <input type="hidden" id="complete-assignment-id" name="assignment_id">
+            <input type="hidden" id="complete-request-id" name="request_id">
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Technician Resolution Remarks <span class="text-rose-500">*</span></label>
+                <textarea id="complete-remarks" required rows="3" placeholder="Explain what was fixed: replaced capacitor, cleaned drain pipe, rewires completed..."
+                          class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-emerald-600 outline-none"></textarea>
+            </div>
+
+            <div class="pt-3 border-t border-slate-200 flex justify-end gap-2">
+                <button type="button" onclick="closeCompleteModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100">
+                    Cancel
+                </button>
+                <button type="submit" id="complete-submit-btn" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs px-5 py-2 rounded-xl shadow-md transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <span>Confirm Completion</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function switchTechnician(staffId) {
+        window.location.href = `/staff-dashboard?staff_id=${staffId}`;
+    }
+
+    async function updateJobProgress(assignmentId, requestId, action) {
+        try {
+            const res = await fetch('/api/update-job-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    assignment_id: assignmentId,
+                    request_id: requestId,
+                    action: action
+                })
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`Work order marked as In Progress!`, 'success');
+                setTimeout(() => window.location.reload(), 700);
+            } else {
+                showToast(data.message || 'Error updating status', 'error');
+            }
+        } catch (err) {
+            showToast('Server error', 'error');
+        }
+    }
+
+    function openCompleteModal(assignmentId, requestId, label) {
+        document.getElementById('complete-assignment-id').value = assignmentId;
+        document.getElementById('complete-request-id').value = requestId;
+        document.getElementById('complete-subtitle').innerText = `REQ-${requestId} • ${label}`;
+        
+        const modal = document.getElementById('complete-modal');
+        const card = document.getElementById('complete-modal-card');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            card.classList.remove('scale-95', 'opacity-0');
+        }, 10);
+    }
+
+    function closeCompleteModal() {
+        const modal = document.getElementById('complete-modal');
+        const card = document.getElementById('complete-modal-card');
+        card.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    async function handleCompleteSubmit(e) {
+        e.preventDefault();
+        const btn = document.getElementById('complete-submit-btn');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+
+        const payload = {
+            assignment_id: document.getElementById('complete-assignment-id').value,
+            request_id: document.getElementById('complete-request-id').value,
+            action: 'complete',
+            remarks: document.getElementById('complete-remarks').value
+        };
+
+        try {
+            const res = await fetch('/api/update-job-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+            if (data.success) {
+                showToast(`Work order REQ-${payload.request_id} resolved!`, 'success');
+                closeCompleteModal();
+                setTimeout(() => window.location.reload(), 700);
+            } else {
+                showToast(data.message || 'Failed to complete job', 'error');
+            }
+        } catch (err) {
+            showToast('Server error while completing job', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Confirm Completion`;
+        }
+    }
+</script>
+{% endblock %}

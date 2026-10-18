@@ -1,0 +1,639 @@
+{% extends "base.html" %}
+
+{% block title %}Submit & Track Repair | UC Main Facilities{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="uc-gradient text-white py-12 px-4 sm:px-6 lg:px-8 shadow-inner">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+        <div class="max-w-2xl">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold mb-4 text-blue-100">
+                <i class="fa-solid fa-building-circle-check text-ucgold-400"></i>
+                Official UC Main Campus Facility Portal
+            </div>
+            <h1 class="text-3xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight">
+                Repair Request and Tracking System
+            </h1>
+            <p class="mt-3 text-base sm:text-lg text-blue-100 font-normal">
+                Report broken classroom equipment, electrical, plumbing, air conditioning, and facility issues across UC Main buildings. Track repair progress in real time.
+            </p>
+            <div class="mt-6 flex flex-wrap gap-3">
+                <a href="#submit-form" class="bg-ucgold-500 hover:bg-ucgold-600 text-ucblue-950 font-bold px-5 py-2.5 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle"></i> Submit Repair Request
+                </a>
+                <a href="#track-section" class="bg-white/15 hover:bg-white/25 text-white font-semibold px-5 py-2.5 rounded-xl backdrop-blur-sm border border-white/20 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass"></i> Track Existing Ticket
+                </a>
+            </div>
+        </div>
+
+        <!-- Quick Stats Card -->
+        <div class="w-full md:w-auto bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-6 text-white grid grid-cols-2 gap-4 sm:min-w-[320px]">
+            <div class="border-r border-white/10 pr-4">
+                <div class="text-3xl font-black text-ucgold-400" id="hero-total-requests">{{ requests|length }}</div>
+                <div class="text-xs text-blue-200 mt-1 uppercase font-semibold">Total Requests</div>
+            </div>
+            <div>
+                <div class="text-3xl font-black text-emerald-300" id="hero-completed">{{ completed_count }}</div>
+                <div class="text-xs text-blue-200 mt-1 uppercase font-semibold">Repairs Completed</div>
+            </div>
+            <div class="border-t border-white/10 pt-4 col-span-2 flex items-center justify-between text-xs text-blue-200">
+                <span><i class="fa-solid fa-bolt text-ucgold-400 mr-1"></i> Avg Response: <strong>Within 24h</strong></span>
+                <span class="text-emerald-300 font-semibold"><i class="fa-solid fa-shield-check"></i> FixFlow Active</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6">
+    <!-- Live Tracking Bar -->
+    <div id="track-section" class="bg-white rounded-2xl shadow-xl border border-slate-200/80 p-5 sm:p-7 transition-all">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <div>
+                <h3 class="text-base sm:text-lg font-bold text-ucblue-900 flex items-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass-location text-ucblue-700"></i>
+                    Track Facility Repair Status
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-500">Enter your Request Tracking ID or School ID to check current repair updates.</p>
+            </div>
+            <form id="track-form" onsubmit="handleTrack(event)" class="flex flex-col sm:flex-row gap-2.5 w-full lg:w-auto">
+                <div class="relative flex-grow min-w-[260px]">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-hashtag text-sm"></i>
+                    </div>
+                    <input type="text" id="track-id-input" placeholder="e.g. 101 or 2026-101" required
+                           class="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-slate-300 focus:ring-2 focus:ring-ucblue-600 focus:border-ucblue-600 outline-none transition-all">
+                </div>
+                <button type="submit" class="bg-ucblue-900 hover:bg-ucblue-800 text-white font-semibold text-sm px-6 py-2.5 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-search"></i>
+                    <span>Track Ticket</span>
+                </button>
+            </form>
+        </div>
+
+        <!-- Tracking Result Display (Hidden by default) -->
+        <div id="tracking-result" class="hidden mt-6 pt-6 border-t border-slate-200">
+            <div class="bg-slate-50 rounded-xl p-5 border border-slate-200">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 pb-4 border-b border-slate-200">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded bg-ucblue-100 text-ucblue-900" id="res-badge-id">REQ-101</span>
+                            <span class="text-sm font-bold text-slate-800" id="res-label">Broken Aircon</span>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1" id="res-location-time">Main Building • Room 205 | Submitted: Oct 18, 2026</p>
+                    </div>
+                    <div class="flex items-center gap-2" id="res-status-container">
+                        <!-- Dynamic Status Badge -->
+                    </div>
+                </div>
+
+                <!-- 4-Step Visual Timeline -->
+                <div class="py-6">
+                    <div class="grid grid-cols-4 gap-2 text-center relative">
+                        <!-- Step 1 -->
+                        <div class="flex flex-col items-center step-item" id="step-1">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-ucblue-900 text-white shadow">
+                                <i class="fa-solid fa-clipboard-check"></i>
+                            </div>
+                            <span class="text-xs font-bold text-slate-800 mt-2">Submitted</span>
+                            <span class="text-[10px] text-slate-500" id="step-1-time">Recorded</span>
+                        </div>
+                        <!-- Step 2 -->
+                        <div class="flex flex-col items-center step-item" id="step-2">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-600">
+                                <i class="fa-solid fa-user-gear"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700 mt-2">Assigned</span>
+                            <span class="text-[10px] text-slate-400" id="step-2-tech">Pending</span>
+                        </div>
+                        <!-- Step 3 -->
+                        <div class="flex flex-col items-center step-item" id="step-3">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-600">
+                                <i class="fa-solid fa-wrench"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700 mt-2">In Progress</span>
+                            <span class="text-[10px] text-slate-400" id="step-3-info">Awaiting Work</span>
+                        </div>
+                        <!-- Step 4 -->
+                        <div class="flex flex-col items-center step-item" id="step-4">
+                            <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-600">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <span class="text-xs font-semibold text-slate-700 mt-2">Completed</span>
+                            <span class="text-[10px] text-slate-400" id="step-4-info">Pending Fix</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Assignment / Remarks Details -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs bg-white p-3.5 rounded-lg border border-slate-200">
+                    <div>
+                        <span class="text-slate-400 font-semibold block">Category & Priority:</span>
+                        <span class="font-bold text-slate-800" id="res-category">HVAC / Aircon</span> • 
+                        <span class="font-semibold text-amber-700" id="res-priority">Medium</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-semibold block">Assigned Technician:</span>
+                        <span class="font-bold text-slate-800" id="res-technician">Not Assigned Yet</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 font-semibold block">Remarks / Notes:</span>
+                        <span class="text-slate-700 italic" id="res-remarks">No technician remarks yet.</span>
+                    </div>
+                </div>
+
+                <!-- Attached Issue Photo Proof in Tracking -->
+                <div id="res-photo-container" class="hidden mt-3 p-3 bg-white rounded-lg border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div class="w-20 h-20 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shadow-sm flex-shrink-0">
+                        <img id="res-photo-img" src="" alt="Issue proof" class="w-full h-full object-cover">
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-slate-800 block flex items-center gap-1.5">
+                            <i class="fa-solid fa-camera text-ucblue-700"></i> Attached Photo Proof of Issue
+                        </span>
+                        <p class="text-[11px] text-slate-500 mt-0.5">Uploaded during report submission to help maintenance locate and diagnose the problem.</p>
+                        <a id="res-photo-link" href="" target="_blank" class="inline-flex items-center gap-1 text-[11px] font-bold text-ucblue-700 hover:underline mt-1.5">
+                            <i class="fa-solid fa-up-right-from-square"></i> View Full Resolution Photo
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Submission Section -->
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" id="submit-form">
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Form Left 2 Columns -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 sm:p-8">
+                <div class="border-b border-slate-200 pb-5 mb-6">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-ucblue-100 text-ucblue-900 flex items-center justify-center font-bold">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-xl font-bold text-slate-900">Repair Request Form</h2>
+                            <p class="text-xs text-slate-500">Submit an issue report directly to UC Main Physical Plant & Facilities Office</p>
+                        </div>
+                    </div>
+                </div>
+
+                <form id="repair-request-form" onsubmit="submitRepairRequest(event)" class="space-y-6">
+                    
+                    <!-- Section: Reporter Details (USERS / DEPARTMENT) -->
+                    <div>
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-ucblue-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-id-card text-ucgold-500"></i> 1. Reporter Information
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">School ID Number <span class="text-rose-500">*</span></label>
+                                <input type="text" name="school_id_no" placeholder="e.g. 21-0492-381" required
+                                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 focus:border-ucblue-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">First Name <span class="text-rose-500">*</span></label>
+                                <input type="text" name="first_name" placeholder="Juan" required
+                                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 focus:border-ucblue-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Last Name <span class="text-rose-500">*</span></label>
+                                <input type="text" name="last_name" placeholder="Dela Cruz" required
+                                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 focus:border-ucblue-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Email Address <span class="text-rose-500">*</span></label>
+                                <input type="email" name="email" placeholder="jdelacruz@uc.edu.ph" required
+                                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 focus:border-ucblue-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Contact No.</label>
+                                <input type="text" name="contact_no" placeholder="09123456789"
+                                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 focus:border-ucblue-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Department <span class="text-rose-500">*</span></label>
+                                <select name="department_id" required class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 outline-none bg-white">
+                                    <option value="" disabled selected>Select Department</option>
+                                    {% for dept in departments %}
+                                    <option value="{{ dept.department_id }}">{{ dept.department_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Location Selection (FLOOR & LOCATION) -->
+                    <div class="pt-2 border-t border-slate-200">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-ucblue-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-map-pin text-ucgold-500"></i> 2. Location of Issue
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Building & Floor <span class="text-rose-500">*</span></label>
+                                <select name="floor_id" id="floor-select" required class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 outline-none bg-white">
+                                    <option value="" disabled selected>Select Building / Floor</option>
+                                    {% for fl in floors %}
+                                    <option value="{{ fl.floor_id }}">{{ fl.building }} — {{ fl.floor_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Room No. <span class="text-rose-500">*</span></label>
+                                <div class="relative">
+                                    <input type="number" name="room_no" id="room-input" min="1" max="800" placeholder="e.g. 304 (1 - 800)" required
+                                           class="w-full pl-3.5 pr-14 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 focus:border-ucblue-600 outline-none font-semibold">
+                                    <span class="absolute right-3 top-2 text-xs text-slate-400 font-bold pointer-events-none">Room #</span>
+                                </div>
+                                <p class="text-[11px] text-slate-400 mt-1">Enter classroom or laboratory number (1 - 800)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Section: Issue Details (CATEGORIES, REQUEST) -->
+                    <div class="pt-2 border-t border-slate-200">
+                        <h3 class="text-xs font-bold uppercase tracking-wider text-ucblue-900 mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-wrench text-ucgold-500"></i> 3. Problem Classification & Details
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Category <span class="text-rose-500">*</span></label>
+                                <select name="category_id" required class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 outline-none bg-white">
+                                    <option value="" disabled selected>Select Category</option>
+                                    {% for cat in categories %}
+                                    <option value="{{ cat.category_id }}">{{ cat.category_name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Priority Urgency <span class="text-rose-500">*</span></label>
+                                <select name="priority" required class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 outline-none bg-white font-semibold">
+                                    <option value="Low">🟢 Low — Minor inconvenience</option>
+                                    <option value="Medium" selected>🟡 Medium — Needs attention soon</option>
+                                    <option value="High">🟠 High — Disrupted class/lab activity</option>
+                                    <option value="Urgent">🔴 Urgent — Safety risk / flooding / electrical hazard</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Problem Label / Summary <span class="text-rose-500">*</span></label>
+                                <input type="text" name="description_label" placeholder="e.g. Broken wall socket / Aircon water drip" required
+                                       class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 focus:border-ucblue-600 outline-none">
+                            </div>
+
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <label class="block text-xs font-bold text-slate-700">Detailed Description of the Issue <span class="text-rose-500">*</span></label>
+                                    <button type="button" onclick="document.getElementById('issue-photo-input').click()" 
+                                            class="inline-flex items-center gap-1.5 text-xs font-bold text-ucblue-900 hover:text-ucblue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-2.5 py-1 rounded-lg transition-all active:scale-95">
+                                        <i class="fa-solid fa-camera text-ucblue-700"></i>
+                                        <span>Add Photo Proof (Optional)</span>
+                                    </button>
+                                </div>
+                                <textarea name="description" rows="3" placeholder="Provide details: exact location within room, what happened, when it started..." required
+                                          class="w-full px-3.5 py-2 text-sm rounded-lg border border-slate-300 focus:ring-2 focus:ring-ucblue-600 focus:border-ucblue-600 outline-none"></textarea>
+
+                                <!-- Hidden File Input -->
+                                <input type="file" id="issue-photo-input" accept="image/*" class="hidden" onchange="handlePhotoSelect(event)">
+
+                                <!-- Photo Preview Container (Hidden by default) -->
+                                <div id="photo-preview-box" class="hidden mt-3 p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-14 h-14 rounded-lg overflow-hidden border border-slate-200 bg-white flex items-center justify-center shadow-sm">
+                                            <img id="photo-preview-img" src="" alt="Issue Preview" class="w-full h-full object-cover">
+                                        </div>
+                                        <div>
+                                            <div class="text-xs font-bold text-slate-800" id="photo-file-name">issue_photo.jpg</div>
+                                            <div class="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                                                <i class="fa-solid fa-circle-check"></i> Image ready to attach
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button type="button" onclick="removeSelectedPhoto()" 
+                                            class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors text-xs font-bold flex items-center gap-1">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                        <span class="hidden sm:inline">Remove</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-4 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="text-xs text-slate-500 flex items-center gap-1.5">
+                            <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+                            Your report will be automatically logged to FixFlowDB
+                        </div>
+                        <button type="submit" id="submit-btn" class="w-full sm:w-auto bg-ucblue-900 hover:bg-ucblue-800 text-white font-bold text-sm px-8 py-3 rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 active:scale-95">
+                            <i class="fa-solid fa-paper-plane text-ucgold-400"></i>
+                            <span>Submit Repair Request</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Sidebar Info & UC Facilities Guidelines -->
+        <div class="space-y-6">
+            <!-- Official UC Main Campus Seal Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 text-center flex flex-col items-center">
+                <div class="w-24 h-24 mb-3 p-2 rounded-2xl bg-slate-50 border border-slate-100 shadow-inner flex items-center justify-center">
+                    <img src="{{ url_for('static', filename='images/uc-logo.png') }}" 
+                         alt="University of Cebu Logo" 
+                         class="max-w-full max-h-full object-contain drop-shadow"
+                         onerror="this.onerror=null; this.src='/uc-logo.png';">
+                </div>
+                <h3 class="text-base font-extrabold text-ucblue-900 tracking-tight">University of Cebu</h3>
+                <span class="inline-block mt-0.5 text-xs font-bold text-ucgold-600 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    Main Campus • Facilities
+                </span>
+                <p class="text-[11px] text-slate-500 mt-2 leading-relaxed">
+                    Official Repair Request and Tracking Portal for classrooms, laboratories, and physical plant maintenance.
+                </p>
+            </div>
+
+            <!-- Guidelines Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-sm font-bold text-ucblue-900 flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-circle-info text-ucgold-500"></i>
+                    UC Main Facilities Guidelines
+                </h3>
+                <ul class="text-xs text-slate-600 space-y-2.5">
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-emerald-600 mt-0.5"></i>
+                        <span>Be specific about the room number (e.g. <strong>CCS Lab 1, 3rd Floor</strong>).</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-emerald-600 mt-0.5"></i>
+                        <span>For urgent water leaks or sparking circuits, notify the nearest guard or dial Local 114 immediately.</span>
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="fa-solid fa-check text-emerald-600 mt-0.5"></i>
+                        <span>Save your <strong>Tracking ID</strong> to check status anytime without logging in.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Maintenance Categories Legend -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h3 class="text-sm font-bold text-ucblue-900 flex items-center gap-2 mb-3">
+                    <i class="fa-solid fa-tags text-ucblue-700"></i>
+                    Active Repair Categories
+                </h3>
+                <div class="flex flex-wrap gap-1.5">
+                    {% for cat in categories %}
+                    <span class="text-[11px] font-medium bg-slate-100 hover:bg-blue-50 text-slate-700 px-2.5 py-1 rounded-md border border-slate-200 transition-colors">
+                        {{ cat.category_name }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Facilities Office Contact -->
+            <div class="bg-gradient-to-br from-ucblue-900 to-ucblue-950 text-white rounded-2xl p-6 shadow-md">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="w-9 h-9 rounded-lg bg-white/10 flex items-center justify-center text-ucgold-400">
+                        <i class="fa-solid fa-headset text-base"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold">Physical Plant Office</h4>
+                        <p class="text-[11px] text-blue-200">Ground Floor, Administration Wing</p>
+                    </div>
+                </div>
+                <div class="text-xs text-blue-100 space-y-1.5 pt-2 border-t border-white/10">
+                    <p><i class="fa-solid fa-phone mr-2 text-ucgold-400"></i> Hotline: (032) 255-7777</p>
+                    <p><i class="fa-solid fa-envelope mr-2 text-ucgold-400"></i> facilities.main@uc.edu.ph</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Modal: Submission Success with Tracking ID -->
+<div id="success-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 text-center shadow-2xl border border-slate-100 transform transition-all scale-95 opacity-0 duration-200" id="success-modal-card">
+        <div class="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl mx-auto mb-4">
+            <i class="fa-solid fa-check"></i>
+        </div>
+        <h3 class="text-xl font-bold text-slate-900">Request Successfully Filed!</h3>
+        <p class="text-xs text-slate-500 mt-1">Your repair request has been logged into FixFlowDB.</p>
+        
+        <div class="my-5 bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <span class="text-[11px] font-bold uppercase text-ucblue-800 tracking-wider">Your Tracking ID</span>
+            <div class="text-2xl font-black text-ucblue-900 mt-1 select-all" id="modal-tracking-id">REQ-101</div>
+            <p class="text-[11px] text-slate-500 mt-1">Please copy or save this ID to track maintenance progress.</p>
+        </div>
+
+        <div class="flex gap-2">
+            <button onclick="closeSuccessModalAndTrack()" class="flex-1 bg-ucblue-900 hover:bg-ucblue-800 text-white font-bold text-xs py-2.5 rounded-xl transition-all">
+                Track Ticket Now
+            </button>
+            <button onclick="closeSuccessModal()" class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs py-2.5 rounded-xl transition-all">
+                Done
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Photo Attachment Handlers
+    let selectedImageData = null;
+
+    function handlePhotoSelect(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            showToast('Please select a valid image file (JPG, PNG, WebP).', 'error');
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            selectedImageData = evt.target.result;
+            document.getElementById('photo-preview-img').src = selectedImageData;
+            document.getElementById('photo-file-name').innerText = file.name;
+            document.getElementById('photo-preview-box').classList.remove('hidden');
+            showToast('Issue photo attached!', 'success');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function removeSelectedPhoto() {
+        selectedImageData = null;
+        document.getElementById('issue-photo-input').value = '';
+        document.getElementById('photo-preview-img').src = '';
+        document.getElementById('photo-preview-box').classList.add('hidden');
+    }
+
+    // Submit Request via API
+    async function submitRepairRequest(e) {
+        e.preventDefault();
+        const form = document.getElementById('repair-request-form');
+        const btn = document.getElementById('submit-btn');
+        const originalContent = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Submitting...`;
+
+        const formData = new FormData(form);
+        const payload = Object.fromEntries(formData.entries());
+        if (selectedImageData) {
+            payload.image_data = selectedImageData;
+        }
+
+        try {
+            const res = await fetch('/api/submit-request', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                // Show modal
+                document.getElementById('modal-tracking-id').innerText = `REQ-${data.request_id}`;
+                openSuccessModal();
+                form.reset();
+                removeSelectedPhoto();
+                showToast(`Request REQ-${data.request_id} created successfully!`, 'success');
+            } else {
+                showToast(data.message || 'Error submitting request', 'error');
+            }
+        } catch (err) {
+            showToast('Failed to reach server. Please try again.', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
+    }
+
+    // Track Request via API
+    async function handleTrack(e) {
+        if (e) e.preventDefault();
+        const input = document.getElementById('track-id-input').value.trim();
+        if (!input) return;
+
+        try {
+            const res = await fetch(`/api/track/${encodeURIComponent(input)}`);
+            const data = await res.json();
+
+            if (data.success) {
+                renderTrackingResult(data.request);
+                document.getElementById('tracking-result').classList.remove('hidden');
+                document.getElementById('tracking-result').scrollIntoView({ behavior: 'smooth' });
+            } else {
+                showToast(data.message || 'No request found with this ID', 'error');
+            }
+        } catch (err) {
+            showToast('Tracking query failed.', 'error');
+        }
+    }
+
+    function renderTrackingResult(req) {
+        document.getElementById('res-badge-id').innerText = `REQ-${req.request_id}`;
+        document.getElementById('res-label').innerText = req.description_label;
+        document.getElementById('res-location-time').innerText = `${req.building} • ${req.room} (${req.floor_name}) | Date: ${req.request_date}`;
+        document.getElementById('res-category').innerText = req.category_name;
+        document.getElementById('res-priority').innerText = req.priority;
+        document.getElementById('res-technician').innerText = req.staff_name || 'Not assigned yet';
+        document.getElementById('res-remarks').innerText = req.remarks || 'No remarks recorded yet.';
+
+        // Photo proof display
+        const photoContainer = document.getElementById('res-photo-container');
+        if (req.image_url) {
+            document.getElementById('res-photo-img').src = req.image_url;
+            document.getElementById('res-photo-link').href = req.image_url;
+            photoContainer.classList.remove('hidden');
+        } else {
+            photoContainer.classList.add('hidden');
+        }
+
+        // Status Badge
+        const statusMap = {
+            'Pending': 'bg-amber-100 text-amber-800 border-amber-300',
+            'Assigned': 'bg-blue-100 text-ucblue-800 border-blue-300',
+            'In Progress': 'bg-purple-100 text-purple-800 border-purple-300',
+            'Completed': 'bg-emerald-100 text-emerald-800 border-emerald-300',
+            'Cancelled': 'bg-rose-100 text-rose-800 border-rose-300'
+        };
+        const badgeClass = statusMap[req.status_name] || 'bg-slate-100 text-slate-800';
+        document.getElementById('res-status-container').innerHTML = `
+            <span class="text-xs font-bold px-3 py-1 rounded-full border ${badgeClass}">
+                <i class="fa-solid fa-circle text-[8px] mr-1"></i> ${req.status_name}
+            </span>
+        `;
+
+        // Update 4-step progress UI
+        updateStepUI(req.status_name, req);
+    }
+
+    function updateStepUI(status, req) {
+        const steps = [
+            document.getElementById('step-1'),
+            document.getElementById('step-2'),
+            document.getElementById('step-3'),
+            document.getElementById('step-4')
+        ];
+
+        // Reset
+        steps.forEach(s => {
+            const iconBox = s.querySelector('div');
+            iconBox.className = 'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-slate-200 text-slate-500';
+        });
+
+        const activeClass = 'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-ucblue-900 text-white shadow-md';
+        const doneClass = 'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-emerald-600 text-white shadow';
+
+        // Step 1 always active
+        steps[0].querySelector('div').className = doneClass;
+
+        if (status === 'Assigned') {
+            steps[1].querySelector('div').className = activeClass;
+            document.getElementById('step-2-tech').innerText = req.staff_name || 'Assigned';
+        } else if (status === 'In Progress') {
+            steps[1].querySelector('div').className = doneClass;
+            steps[2].querySelector('div').className = activeClass;
+            document.getElementById('step-3-info').innerText = req.date_started || 'Work in progress';
+        } else if (status === 'Completed') {
+            steps[1].querySelector('div').className = doneClass;
+            steps[2].querySelector('div').className = doneClass;
+            steps[3].querySelector('div').className = doneClass;
+            document.getElementById('step-4-info').innerText = req.date_completed || 'Resolved';
+        }
+    }
+
+    // Modal controls
+    function openSuccessModal() {
+        const modal = document.getElementById('success-modal');
+        const card = document.getElementById('success-modal-card');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            card.classList.remove('scale-95', 'opacity-0');
+        }, 10);
+    }
+
+    function closeSuccessModal() {
+        const modal = document.getElementById('success-modal');
+        const card = document.getElementById('success-modal-card');
+        card.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => modal.classList.add('hidden'), 200);
+    }
+
+    function closeSuccessModalAndTrack() {
+        const trackIdText = document.getElementById('modal-tracking-id').innerText.replace('REQ-', '');
+        closeSuccessModal();
+        document.getElementById('track-id-input').value = trackIdText;
+        handleTrack();
+    }
+</script>
+{% endblock %}
